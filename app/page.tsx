@@ -655,20 +655,41 @@ export default function AgenticPage() {
                 setSending(true)
                 setSubmitError(false)
                 try {
-                  const res = await fetch("https://formsubmit.co/ajax/chowdorydevops@gmail.com", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", Accept: "application/json" },
-                    body: JSON.stringify({
-                      name: leadName,
-                      email,
-                      service,
-                      message,
-                      _subject: `RINTU AI - ${service} enquiry`,
-                      _autoresponse: "Thanks for reaching out - I'll reply within 24 hours. - Rintu",
+                  // Primary path: RINTU AI agent pipeline (Lead entity + Gmail notification workflow)
+                  // Backup path: FormSubmit relay
+                  const [agentRes, formRes] = await Promise.allSettled([
+                    fetch("https://solas-4c7fedc6.base44.app/functions/recordLead", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        name: leadName,
+                        email,
+                        service,
+                        message,
+                        source: "rintu-ai-site",
+                        website: "",
+                      }),
                     }),
-                  })
-                  if (!res.ok) throw new Error("send failed")
-                  setSubmitted(true)
+                    fetch("https://formsubmit.co/ajax/chowdorydevops@gmail.com", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", Accept: "application/json" },
+                      body: JSON.stringify({
+                        name: leadName,
+                        email,
+                        service,
+                        message,
+                        _subject: `RINTU AI - ${service} enquiry`,
+                        _autoresponse: "Thanks for reaching out - I'll reply within 24 hours. - Rintu",
+                      }),
+                    }),
+                  ])
+                  const agentOk = agentRes.status === "fulfilled" && agentRes.value.ok
+                  const formOk = formRes.status === "fulfilled" && formRes.value.ok
+                  if (agentOk || formOk) {
+                    setSubmitted(true)
+                  } else {
+                    setSubmitError(true)
+                  }
                 } catch {
                   setSubmitError(true)
                 } finally {
