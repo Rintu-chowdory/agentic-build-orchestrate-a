@@ -41,7 +41,7 @@ const ALL_REVIEW_LINES: { type: "comment"|"approve"|"change"|"code"; text: strin
 const COMMITS = [
   { hash: "a3f8c21", msg: "fix: memory leak in long-running agents",    time: "Just now" },
   { hash: "b7d2e09", msg: "feat: streaming response for analyst",        time: "4m ago"   },
-  { hash: "c9a1f34", msg: "chore: bump @agentic/sdk to 2.4.1",          time: "12m ago"  },
+  { hash: "c9a1f34", msg: "chore: weekly dependency updates",          time: "12m ago"  },
   { hash: "d4e6b78", msg: "perf: reduce token overhead by 18%",          time: "31m ago"  },
   { hash: "e2c9d56", msg: "feat: add guardrails to executor-agent",      time: "1h ago"   },
 ]
@@ -484,7 +484,7 @@ export function AgentInterface({ revealDelay = 0 }: { revealDelay?: number }) {
           <span style={{
             position: "absolute", left: "50%", transform: "translateX(-50%)",
             fontSize: 10, letterSpacing: "0.18em", color: "rgba(0,0,0,0.28)", fontFamily: "monospace",
-          }}>agentic / platform — main</span>
+          }}>rintu / agents — live</span>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
             <LiveDot />
             <span style={{ fontSize: 8, color: "rgba(40,167,69,0.8)", letterSpacing: "0.16em", fontFamily: "monospace" }}>ALL SYSTEMS OPERATIONAL</span>

@@ -149,15 +149,15 @@ export default function AgenticPage() {
               transition: "opacity 1s cubic-bezier(0.16,1,0.3,1) 0ms, filter 1s cubic-bezier(0.16,1,0.3,1) 0ms, transform 1s cubic-bezier(0.16,1,0.3,1) 0ms",
             }}
           >
-            Build &amp;<br />orchestrate AI<br />agents while<br />you sleep.
+            I build AI<br />agents that<br />work while<br />you sleep.
           </h1>
 
           {/* 3 metrics — staggered after title */}
           <div className="flex gap-8 sm:gap-12">
             {[
-              { value: "50M+", label: "Tasks" },
-              { value: "99.9%", label: "Uptime" },
-              { value: "180+", label: "Countries" },
+              { value: "6+", label: "Live products" },
+              { value: "24/7", label: "Agents on duty" },
+              { value: "1:1", label: "Personal support" },
             ].map((stat, i) => (
               <div
                 key={i}
@@ -183,7 +183,7 @@ export default function AgenticPage() {
             <PixelIcon type="platform" size={40} />
             <div className="mt-4"><Tag>PLATFORM</Tag></div>
             <RevealText className="mt-5 text-4xl md:text-5xl lg:text-6xl font-light tracking-tight leading-[1.05]">
-              {"Everything you need\nto ship agents."}
+              {"What I build for\nyour business."}
             </RevealText>
           </div>
 
@@ -530,35 +530,35 @@ export default function AgenticPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16 flex flex-col items-center">
             <PixelIcon type="pricing" size={40} />
-            <div className="mt-4"><Tag>PRICING</Tag></div>
+            <div className="mt-4"><Tag>SERVICES</Tag></div>
             <RevealText className="mt-5 text-4xl md:text-5xl font-light tracking-tight leading-[1.05]">
-              {"Pay as your agents grow."}
+              {"Simple, honest pricing."}
             </RevealText>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3" onMouseMove={handleMouse}>
             {[
               {
-                name: "Sandbox",
+                name: "Discovery",
                 price: "Free",
-                sub: "Start experimenting",
-                features: ["5 agents", "1,000 tasks/mo", "Community support", "Basic traces"],
+                sub: "Find your first automation",
+                features: ["30-min call", "Automation audit of your workflow", "Honest feasibility check", "No obligation"],
                 delay: 0,
               },
               {
-                name: "Builder",
-                price: "$49",
-                period: "/mo",
-                sub: "For teams shipping fast",
-                features: ["50 agents", "100K tasks/mo", "Priority support", "Full traces + replay", "Custom tools", "REST API"],
+                name: "Agent Build",
+                price: "€490",
+                period: "/project",
+                sub: "Your first AI agent, shipped",
+                features: ["Custom AI agent for your task", "Data & tools wiring", "Deployment included", "Delivery in ~2 weeks", "30 days of support", "Handover documentation"],
                 highlight: true,
                 delay: 80,
               },
               {
-                name: "Enterprise",
+                name: "Retainer",
                 price: "Custom",
-                sub: "For orgs at scale",
-                features: ["Unlimited agents", "Unlimited tasks", "Dedicated infra", "SOC 2 / HIPAA", "SLA guarantees", "Custom contracts"],
+                sub: "Keep your agents growing",
+                features: ["Monthly maintenance", "New agents on demand", "Monitoring & fixes", "Priority response", "Cancel anytime"],
                 delay: 140,
               },
             ].map((plan) => (
@@ -583,13 +583,13 @@ export default function AgenticPage() {
                     </li>
                   ))}
                 </ul>
-                <button className={`w-full py-3 rounded-xl text-sm tracking-widest transition-all duration-200 ${
+                <a href="mailto:chowdorydevops@gmail.com?subject=Agent%20project%20enquiry" className={`block w-full text-center py-3 rounded-xl text-sm tracking-widest transition-all duration-200 ${
                   plan.highlight
                     ? "bg-[#111] text-white hover:bg-[#333]"
                     : "border border-black/10 text-black/60 hover:border-black/25 hover:text-black hover:bg-black/[0.04]"
                 }`}>
-                  {plan.name === "Enterprise" ? "CONTACT SALES" : "GET STARTED"}
-                </button>
+                  {plan.name === "Retainer" ? "LET'S TALK" : "GET STARTED"}
+                </a>
               </BentoCard>
             ))}
           </div>
@@ -597,7 +597,7 @@ export default function AgenticPage() {
       </section>
 
       {/* ── CTA ───────────────────────────────────────────────────────────── */}
-      <section className="relative py-32 px-6 md:px-12 lg:px-20 border-t border-black/[0.06] overflow-hidden">
+      <section id="cta" className="relative py-32 px-6 md:px-12 lg:px-20 border-t border-black/[0.06] overflow-hidden">
         {/* Glass panels image — anchored to bottom center */}
         <img
           src="/images/footer.png"
@@ -625,14 +625,25 @@ export default function AgenticPage() {
         />
         <div className="relative z-10 max-w-2xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight leading-[1.05] mb-6">
-            Start building your<br />agent workforce.
+            Let&rsquo;s build your<br />first AI agent.
           </h2>
           <p className="text-sm text-black/45 leading-relaxed mb-10">
-            Join thousands of teams deploying AI agents that work around the clock, across every timezone.
+            Tell me what eats your time each week &mdash; I&rsquo;ll design an AI agent that takes it off your plate. Based in Baesweiler, working worldwide.
           </p>
           {!submitted ? (
             <form
-              onSubmit={e => { e.preventDefault(); if (email) setSubmitted(true) }}
+              onSubmit={async e => {
+                e.preventDefault()
+                if (!email) return
+                setSubmitted(true)
+                try {
+                  await fetch("https://formsubmit.co/ajax/chowdorydevops@gmail.com", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Accept: "application/json" },
+                    body: JSON.stringify({ email, _subject: "RINTU AI - new project enquiry" }),
+                  })
+                } catch {}
+              }}
               className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto"
             >
               <input
@@ -653,7 +664,7 @@ export default function AgenticPage() {
           ) : (
             <div className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-emerald-600/20 bg-emerald-50 text-emerald-700 text-sm">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              {"You're on the list. We'll be in touch."}
+              {"Got it - I'll get back to you within 24 hours."}
             </div>
           )}
         </div>
@@ -663,7 +674,7 @@ export default function AgenticPage() {
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
       <footer className="py-10 px-6 md:px-12 lg:px-20 border-t border-black/[0.06]">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-          <span className="font-pixel text-xs tracking-[0.25em] text-black/50">AGENTIC</span>
+          <span className="font-pixel text-xs tracking-[0.25em] text-black/50">RINTU AI</span>
 
           {/* Nav sections */}
           <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
@@ -673,7 +684,7 @@ export default function AgenticPage() {
               { label: "Workflow",     href: "#workflow" },
               { label: "Integrations", href: "#integrations" },
               { label: "Live",         href: "#live" },
-              { label: "Pricing",      href: "#pricing" },
+              { label: "Services",     href: "#pricing" },
             ].map(l => (
               <a key={l.label} href={l.href} className="text-xs text-black/35 hover:text-black/70 transition-colors tracking-widest">{l.label}</a>
             ))}
@@ -682,17 +693,16 @@ export default function AgenticPage() {
           {/* Legal links */}
           <div className="flex items-center gap-6">
             {[
-              { label: "Privacy", href: "#" },
-              { label: "Terms",   href: "#" },
-              { label: "Docs",    href: "#" },
-              { label: "GitHub",  href: "#" },
+              { label: "Portfolio", href: "https://rintu-chowdory.github.io/DevopsWorksflow/" },
+              { label: "GitHub",    href: "https://github.com/Rintu-chowdory" },
+              { label: "Email",     href: "mailto:chowdorydevops@gmail.com" },
             ].map(l => (
               <a key={l.label} href={l.href} className="text-xs text-black/25 hover:text-black/55 transition-colors tracking-widest">{l.label}</a>
             ))}
           </div>
         </div>
         <div className="max-w-6xl mx-auto mt-8 pt-6 border-t border-black/[0.04]">
-          <span className="text-xs text-black/20">© 2026 Agentic. All rights reserved.</span>
+          <span className="text-xs text-black/20">© 2026 Rintu Chowdory · Baesweiler</span>
         </div>
       </footer>
     </div>
