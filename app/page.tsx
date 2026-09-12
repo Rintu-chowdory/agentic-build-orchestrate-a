@@ -77,8 +77,20 @@ function Tag({ children }: { children: React.ReactNode }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function AgenticPage() {
+  const [leadName, setLeadName] = useState("")
   const [email, setEmail] = useState("")
+  const [service, setService] = useState("Discovery")
+  const [message, setMessage] = useState("")
+  const [sending, setSending] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submitError, setSubmitError] = useState(false)
+  const formRef = useRef(null)
+  const selectPlan = useCallback((plan: string) => {
+    setService(plan)
+    setSubmitted(false)
+    document.getElementById("cta")?.scrollIntoView({ behavior: "smooth" })
+    setTimeout(() => formRef.current?.querySelector<HTMLInputElement>("input")?.focus(), 700)
+  }, [])
   const [heroReady, setHeroReady] = useState(false)
   const [videoReady, setVideoReady] = useState(false)
   const handleIntroDone = useCallback(() => {
@@ -583,13 +595,17 @@ export default function AgenticPage() {
                     </li>
                   ))}
                 </ul>
-                <a href="mailto:chowdorydevops@gmail.com?subject=Agent%20project%20enquiry" className={`block w-full text-center py-3 rounded-xl text-sm tracking-widest transition-all duration-200 ${
-                  plan.highlight
-                    ? "bg-[#111] text-white hover:bg-[#333]"
-                    : "border border-black/10 text-black/60 hover:border-black/25 hover:text-black hover:bg-black/[0.04]"
-                }`}>
+                <button
+                  type="button"
+                  onClick={() => selectPlan(plan.name)}
+                  className={`block w-full text-center py-3 rounded-xl text-sm tracking-widest transition-all duration-200 ${
+                    plan.highlight
+                      ? "bg-[#111] text-white hover:bg-[#333]"
+                      : "border border-black/10 text-black/60 hover:border-black/25 hover:text-black hover:bg-black/[0.04]"
+                  }`}
+                >
                   {plan.name === "Retainer" ? "LET'S TALK" : "GET STARTED"}
-                </a>
+                </button>
               </BentoCard>
             ))}
           </div>
@@ -632,33 +648,81 @@ export default function AgenticPage() {
           </p>
           {!submitted ? (
             <form
+              ref={formRef}
               onSubmit={async e => {
                 e.preventDefault()
-                if (!email) return
-                setSubmitted(true)
+                if (sending) return
+                setSending(true)
+                setSubmitError(false)
                 try {
-                  await fetch("https://formsubmit.co/ajax/chowdorydevops@gmail.com", {
+                  const res = await fetch("https://formsubmit.co/ajax/chowdorydevops@gmail.com", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", Accept: "application/json" },
-                    body: JSON.stringify({ email, _subject: "RINTU AI - new project enquiry" }),
+                    body: JSON.stringify({
+                      name: leadName,
+                      email,
+                      service,
+                      message,
+                      _subject: `RINTU AI - ${service} enquiry`,
+                      _autoresponse: "Thanks for reaching out - I'll reply within 24 hours. - Rintu",
+                    }),
                   })
-                } catch {}
+                  if (!res.ok) throw new Error("send failed")
+                  setSubmitted(true)
+                } catch {
+                  setSubmitError(true)
+                } finally {
+                  setSending(false)
+                }
               }}
-              className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto"
+              className="max-w-md mx-auto text-left bg-white/80 backdrop-blur-sm rounded-2xl border border-black/10 p-5 sm:p-6 space-y-3"
             >
-              <input
-                type="email"
-                placeholder="your@email.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  placeholder="Your name"
+                  value={leadName}
+                  onChange={e => setLeadName(e.target.value)}
+                  required
+                  className="w-full bg-white border border-black/10 rounded-xl px-4 py-3 text-sm text-[#111] placeholder:text-black/25 focus:outline-none focus:border-black/25 transition-colors"
+                />
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  className="w-full bg-white border border-black/10 rounded-xl px-4 py-3 text-sm text-[#111] placeholder:text-black/25 focus:outline-none focus:border-black/25 transition-colors"
+                />
+              </div>
+              <select
+                value={service}
+                onChange={e => setService(e.target.value)}
+                className="w-full bg-white border border-black/10 rounded-xl px-4 py-3 text-sm text-[#111] focus:outline-none focus:border-black/25 transition-colors"
+              >
+                <option>Discovery</option>
+                <option>Agent Build</option>
+                <option>Retainer</option>
+              </select>
+              <textarea
+                rows={3}
+                placeholder="What should the agent take off your plate?"
+                value={message}
+                onChange={e => setMessage(e.target.value)}
                 required
-                className="flex-1 bg-white border border-black/10 rounded-xl px-4 py-3 text-sm text-[#111] placeholder:text-black/25 focus:outline-none focus:border-black/25 transition-colors"
+                className="w-full bg-white border border-black/10 rounded-xl px-4 py-3 text-sm text-[#111] placeholder:text-black/25 focus:outline-none focus:border-black/25 transition-colors resize-none"
               />
+              {submitError && (
+                <p className="text-xs text-red-600">
+                  Sending failed &mdash; please email me directly at chowdorydevops@gmail.com.
+                </p>
+              )}
               <button
                 type="submit"
-                className="px-8 py-3 bg-[#111] text-white text-sm rounded-xl hover:bg-[#333] transition-colors tracking-widest font-medium"
+                disabled={sending}
+                className="w-full px-8 py-3 bg-[#111] text-white text-sm rounded-xl hover:bg-[#333] disabled:opacity-60 transition-colors tracking-widest font-medium"
               >
-                JOIN
+                {sending ? "SENDING..." : "SEND ENQUIRY"}
               </button>
             </form>
           ) : (
@@ -666,6 +730,15 @@ export default function AgenticPage() {
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               {"Got it - I'll get back to you within 24 hours."}
             </div>
+          )}
+          {submitted && (
+            <button
+              type="button"
+              onClick={() => { setSubmitted(false); setMessage("") }}
+              className="block mx-auto mt-4 text-xs text-black/35 hover:text-black/70 transition-colors tracking-widest underline underline-offset-4"
+            >
+              SEND ANOTHER ENQUIRY
+            </button>
           )}
         </div>
       </section>
