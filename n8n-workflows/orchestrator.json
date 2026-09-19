@@ -160,7 +160,7 @@
   {
    "parameters": {
     "mode": "runOnceForAllItems",
-    "jsCode": "const base = $('Normalize Input').first().json;\nconst results = $input.all().map(i => {\n  const j = i.json || {};\n  let r;\n  if (j.result !== undefined) r = typeof j.result === 'string' ? j.result : JSON.stringify(j.result);\n  else r = j.error ? ('Agent failed: ' + JSON.stringify(j.error)) : 'Agent returned no result';\n  return { agent: j.agent || 'unknown', result: r };\n});\nreturn [{ json: { task: base.task, source: base.source, issue_number: base.issue_number, results } }];"
+    "jsCode": "const base = $('Normalize Input').first().json;\nconst MAX = 2500;\nconst results = $input.all().map(i => {\n  const j = i.json || {};\n  let r;\n  if (j.result !== undefined) r = typeof j.result === 'string' ? j.result : JSON.stringify(j.result);\n  else r = j.error ? ('Agent failed: ' + JSON.stringify(j.error)) : 'Agent returned no result';\n  if (r.length > MAX) r = r.slice(0, MAX) + '...[truncated]';\n  return { agent: j.agent || 'unknown', result: r };\n});\nreturn [{ json: { task: base.task, source: base.source, issue_number: base.issue_number, results } }];"
    },
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
