@@ -1,0 +1,340 @@
+{
+ "name": "GitHub Auto-Fix Agent",
+ "nodes": [
+  {
+   "parameters": {
+    "owner": {
+     "__rl": true,
+     "value": "=Rintu-chowdory",
+     "mode": "name"
+    },
+    "repository": {
+     "__rl": true,
+     "mode": "name",
+     "value": "=agentic-build-orchestrate-a"
+    },
+    "events": [
+     "issues"
+    ],
+    "options": {}
+   },
+   "name": "GitHub Trigger",
+   "type": "n8n-nodes-base.githubTrigger",
+   "typeVersion": 1,
+   "position": [
+    -416,
+    112
+   ],
+   "id": "2f4fafd7-5984-4f31-abdc-be7a289acd20",
+   "webhookId": "374e5988-6d51-4fdc-ac41-b97da4e3fcfc",
+   "credentials": {
+    "githubApi": {
+     "id": "dAjZFYhSr9DSzzjO",
+     "name": "GitHub account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "string": [
+      {
+       "value1": "={{$json.action}}",
+       "value2": "opened"
+      },
+      {
+       "value1": "={{ $json.issue ? 'issue' : 'other' }}",
+       "value2": "issue"
+      }
+     ]
+    }
+   },
+   "name": "IF Opened",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 1,
+   "position": [
+    -176,
+    112
+   ],
+   "id": "deefb85e-83a4-41c8-aa0e-14c865490fb2"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://api.anthropic.com/v1/messages",
+    "authentication": "genericCredentialType",
+    "genericAuthType": "httpHeaderAuth",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "anthropic-version",
+       "value": "2023-06-01"
+      },
+      {
+       "name": "content-type",
+       "value": "application/json"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({\"model\": \"claude-sonnet-4-6\", \"max_tokens\": 2000, \"messages\": [{\"role\": \"user\", \"content\": \"Fix this GitHub issue. Title: \" + $json.issue.title + \"\\nBody: \" + ($json.issue.body || \"\") + \"\\nRespond ONLY with JSON: {\\\"filePath\\\": \\\"<the file to fix\\\", \\\"fileContent\\\": \\\"<full corrected file content>\\\"}. Use README.md if no file is clearly affected. No markdown fences, no explanation.\"}]}) }}",
+    "options": {}
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.5,
+   "position": [
+    48,
+    112
+   ],
+   "id": "821508e3-ed83-47d7-92b4-fe819cd65e71",
+   "name": "Call Claude",
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "vmEZSyYga20sqPgZ",
+     "name": "Header Auth account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "const raw = $input.first().json.content[0].text;\nlet t = raw.trim();\nif (t.startsWith('```')) { t = t.replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, ''); }\nconst parsed = JSON.parse(t);\nconst trig = $('GitHub Trigger').first().json;\nreturn [{ json: { branch: 'fix/auto-' + trig.issue.number, fixText: parsed.fileContent, filePath: parsed.filePath || 'README.md', issueNumber: trig.issue.number, owner: trig.repository.owner.login, repo: trig.repository.name } }];"
+   },
+   "name": "Parse Fix",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    304,
+    32
+   ],
+   "id": "928da67a-c7de-4fbb-b2dc-1368669243a6"
+  },
+  {
+   "parameters": {
+    "url": "=https://api.github.com/repos/{{$json.owner}}/{{$json.repo}}/git/ref/heads/main",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "githubApi",
+    "options": {}
+   },
+   "name": "Get Main SHA",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4,
+   "position": [
+    544,
+    32
+   ],
+   "id": "da6ed9fc-c406-4a21-9d52-cc7da90e7256",
+   "credentials": {
+    "githubApi": {
+     "id": "dAjZFYhSr9DSzzjO",
+     "name": "GitHub account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "=https://api.github.com/repos/{{$('Parse Fix').item.json.owner}}/{{$('Parse Fix').item.json.repo}}/git/refs",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "githubApi",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ {\"ref\": \"refs/heads/\" + $('Parse Fix').item.json.branch, \"sha\": $json.object.sha} }}",
+    "options": {}
+   },
+   "name": "Create Branch",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4,
+   "position": [
+    784,
+    32
+   ],
+   "id": "d9ce0e40-6ed6-44dd-8ca9-67c11d1917fb",
+   "credentials": {
+    "githubApi": {
+     "id": "dAjZFYhSr9DSzzjO",
+     "name": "GitHub account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "url": "=https://api.github.com/repos/{{$('Parse Fix').item.json.owner}}/{{$('Parse Fix').item.json.repo}}/contents/{{$('Parse Fix').item.json.filePath}}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "githubApi",
+    "sendQuery": true,
+    "queryParameters": {
+     "parameters": [
+      {
+       "name": "ref",
+       "value": "main"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "name": "Get File SHA",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4,
+   "position": [
+    1024,
+    32
+   ],
+   "id": "7c3e1f5a-2d84-4b67-9f01-8a5c2e9d3b74",
+   "credentials": {
+    "githubApi": {
+     "id": "dAjZFYhSr9DSzzjO",
+     "name": "GitHub account"
+    }
+   },
+   "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "method": "PUT",
+    "url": "=https://api.github.com/repos/{{$('Parse Fix').item.json.owner}}/{{$('Parse Fix').item.json.repo}}/contents/{{$('Parse Fix').item.json.filePath}}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "githubApi",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ \"message\": \"Auto-fix for issue #\" + $('Parse Fix').item.json.issueNumber, \"content\": Buffer.from($('Parse Fix').item.json.fixText, 'utf-8').toString('base64'), \"branch\": $('Parse Fix').item.json.branch, ...($('Get File SHA').item.json.sha ? { \"sha\": $('Get File SHA').item.json.sha } : {}) }) }}",
+    "options": {}
+   },
+   "name": "Commit Fix",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4,
+   "position": [
+    1264,
+    32
+   ],
+   "id": "c2452b84-c01d-4242-ba9e-ad559e797273",
+   "credentials": {
+    "githubApi": {
+     "id": "dAjZFYhSr9DSzzjO",
+     "name": "GitHub account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "=https://api.github.com/repos/{{$('Parse Fix').item.json.owner}}/{{$('Parse Fix').item.json.repo}}/pulls",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "githubApi",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ {\"title\": \"Auto-fix: issue #\" + $('Parse Fix').item.json.issueNumber, \"head\": $('Parse Fix').item.json.branch, \"base\": \"main\", \"body\": \"Automated fix generated by Claude for issue #\" + $('Parse Fix').item.json.issueNumber} }}",
+    "options": {}
+   },
+   "name": "Open PR",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4,
+   "position": [
+    1504,
+    32
+   ],
+   "id": "363c91d8-8603-477a-92e6-014e9b5a1533",
+   "credentials": {
+    "githubApi": {
+     "id": "dAjZFYhSr9DSzzjO",
+     "name": "GitHub account"
+    }
+   }
+  }
+ ],
+ "pinData": {},
+ "connections": {
+  "GitHub Trigger": {
+   "main": [
+    [
+     {
+      "node": "IF Opened",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "IF Opened": {
+   "main": [
+    [
+     {
+      "node": "Call Claude",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Call Claude": {
+   "main": [
+    [
+     {
+      "node": "Parse Fix",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Parse Fix": {
+   "main": [
+    [
+     {
+      "node": "Get Main SHA",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Get Main SHA": {
+   "main": [
+    [
+     {
+      "node": "Create Branch",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Create Branch": {
+   "main": [
+    [
+     {
+      "node": "Get File SHA",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Get File SHA": {
+   "main": [
+    [
+     {
+      "node": "Commit Fix",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Commit Fix": {
+   "main": [
+    [
+     {
+      "node": "Open PR",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

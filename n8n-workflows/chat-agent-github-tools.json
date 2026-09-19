@@ -1,0 +1,332 @@
+{
+ "name": "My workflow (rebuilt)",
+ "nodes": [
+  {
+   "parameters": {
+    "options": {
+     "publicTrigger": true
+    }
+   },
+   "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+   "typeVersion": 1.4,
+   "position": [
+    -608,
+    -240
+   ],
+   "id": "20bec8a7-25c0-4647-a1fa-d030449130d0",
+   "name": "When chat message received"
+  },
+  {
+   "parameters": {
+    "promptType": "define",
+    "text": "={{ $json.chatInput }}",
+    "options": {
+     "systemMessage": "You are Rintu's personal assistant. Use the Calculator for math, the SerpApi tool for current web info, and the GitHub tools for anything about Rintu's repositories (list/create issues, list PRs, comment). Keep answers short and clear."
+    }
+   },
+   "type": "@n8n/n8n-nodes-langchain.agent",
+   "typeVersion": 3.1,
+   "position": [
+    -400,
+    -240
+   ],
+   "id": "05bf348b-255f-4124-946f-279bfac3b9db",
+   "name": "AI Agent"
+  },
+  {
+   "parameters": {},
+   "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+   "typeVersion": 1.4,
+   "position": [
+    -304,
+    -32
+   ],
+   "id": "3d374482-b414-4062-9b02-4536a45803ed",
+   "name": "Simple Memory"
+  },
+  {
+   "parameters": {},
+   "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+   "typeVersion": 1,
+   "position": [
+    -208,
+    -32
+   ],
+   "id": "cfcfabed-1c5d-4cb9-b589-69fa11e4facf",
+   "name": "Calculator"
+  },
+  {
+   "parameters": {
+    "additionalFields": {},
+    "requestOptions": {}
+   },
+   "type": "n8n-nodes-serpapi.serpApiTool",
+   "typeVersion": 1,
+   "position": [
+    -112,
+    32
+   ],
+   "id": "27575160-7d8c-4270-959d-5aaca6ebbd42",
+   "name": "Google search in SerpApi",
+   "credentials": {
+    "serpApi": {
+     "id": "J3f0pm8lMJ0or83C",
+     "name": "SerpApi account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "model": "openai/gpt-oss-120b",
+    "options": {
+     "temperature": 0.4
+    }
+   },
+   "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+   "typeVersion": 1,
+   "position": [
+    -432,
+    -64
+   ],
+   "id": "f383255d-34bb-4ec7-bab0-e32e0e056752",
+   "name": "Groq Chat Model",
+   "credentials": {
+    "groqApi": {
+     "id": "REPLACE_AFTER_IMPORT",
+     "name": "Groq account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "toolDescription": "List open issues in one of Rintu's GitHub repositories. Use when the user asks about open issues or a repo's status.",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "githubApi",
+    "options": {},
+    "url": "=https://api.github.com/repos/Rintu-chowdory/{{ $fromAI('repo', 'the repository name only, e.g. agentic-build-orchestrate-a', 'string') }}/issues",
+    "sendQuery": true,
+    "queryParameters": {
+     "parameters": [
+      {
+       "name": "state",
+       "value": "open"
+      },
+      {
+       "name": "per_page",
+       "value": "10"
+      }
+     ]
+    }
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    -608,
+    160
+   ],
+   "id": "11110001-0000-4000-8000-000000000001",
+   "name": "GitHub: List Issues",
+   "credentials": {
+    "githubApi": {
+     "id": "dAjZFYhSr9DSzzjO",
+     "name": "GitHub account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "toolDescription": "Create a new issue in one of Rintu's GitHub repositories.",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "githubApi",
+    "options": {},
+    "method": "POST",
+    "url": "=https://api.github.com/repos/Rintu-chowdory/{{ $fromAI('repo', 'the repository name only, e.g. agentic-build-orchestrate-a', 'string') }}/issues",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ title: $fromAI('title', 'a short clear issue title', 'string'), body: $fromAI('body', 'the full issue description in markdown', 'string') }) }}"
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    -400,
+    160
+   ],
+   "id": "11110001-0000-4000-8000-000000000002",
+   "name": "GitHub: Create Issue",
+   "credentials": {
+    "githubApi": {
+     "id": "dAjZFYhSr9DSzzjO",
+     "name": "GitHub account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "toolDescription": "Post a comment on an issue or pull request in one of Rintu's GitHub repositories.",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "githubApi",
+    "options": {},
+    "method": "POST",
+    "url": "=https://api.github.com/repos/Rintu-chowdory/{{ $fromAI('repo', 'the repository name only, e.g. agentic-build-orchestrate-a', 'string') }}/issues/{{ $fromAI('number', 'the issue or PR number', 'number') }}/comments",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ body: $fromAI('comment', 'the comment text in markdown', 'string') }) }}"
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    -208,
+    160
+   ],
+   "id": "11110001-0000-4000-8000-000000000003",
+   "name": "GitHub: Comment",
+   "credentials": {
+    "githubApi": {
+     "id": "dAjZFYhSr9DSzzjO",
+     "name": "GitHub account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "toolDescription": "List open pull requests in one of Rintu's GitHub repositories.",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "githubApi",
+    "options": {},
+    "url": "=https://api.github.com/repos/Rintu-chowdory/{{ $fromAI('repo', 'the repository name only, e.g. agentic-build-orchestrate-a', 'string') }}/pulls",
+    "sendQuery": true,
+    "queryParameters": {
+     "parameters": [
+      {
+       "name": "state",
+       "value": "open"
+      },
+      {
+       "name": "per_page",
+       "value": "10"
+      }
+     ]
+    }
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    -16,
+    160
+   ],
+   "id": "11110001-0000-4000-8000-000000000004",
+   "name": "GitHub: List PRs",
+   "credentials": {
+    "githubApi": {
+     "id": "dAjZFYhSr9DSzzjO",
+     "name": "GitHub account"
+    }
+   }
+  }
+ ],
+ "pinData": {},
+ "connections": {
+  "When chat message received": {
+   "main": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Simple Memory": {
+   "ai_memory": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_memory",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Calculator": {
+   "ai_tool": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Google search in SerpApi": {
+   "ai_tool": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Groq Chat Model": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "GitHub: List Issues": {
+   "ai_tool": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "GitHub: Create Issue": {
+   "ai_tool": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "GitHub: Comment": {
+   "ai_tool": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "GitHub: List PRs": {
+   "ai_tool": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}

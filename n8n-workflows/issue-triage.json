@@ -1,0 +1,178 @@
+{
+ "name": "Issue Triage",
+ "nodes": [
+  {
+   "parameters": {
+    "owner": {
+     "__rl": true,
+     "value": "=Rintu-chowdory",
+     "mode": "name"
+    },
+    "repository": {
+     "__rl": true,
+     "mode": "name",
+     "value": "=agentic-build-orchestrate-a"
+    },
+    "events": [
+     "issues"
+    ],
+    "options": {}
+   },
+   "name": "GitHub Trigger",
+   "type": "n8n-nodes-base.githubTrigger",
+   "typeVersion": 1,
+   "position": [
+    -416,
+    112
+   ],
+   "id": "22220001-0000-4000-8000-000000000001",
+   "webhookId": "22220001-0000-4000-8000-0000000000ff",
+   "credentials": {
+    "githubApi": {
+     "id": "dAjZFYhSr9DSzzjO",
+     "name": "GitHub account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "string": [
+      {
+       "value1": "={{$json.action}}",
+       "value2": "opened"
+      },
+      {
+       "value1": "={{ $json.issue ? 'issue' : 'other' }}",
+       "value2": "issue"
+      }
+     ]
+    }
+   },
+   "name": "IF Opened",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 1,
+   "position": [
+    -176,
+    112
+   ],
+   "id": "22220001-0000-4000-8000-000000000002"
+  },
+  {
+   "parameters": {
+    "jsCode": "const t = $('GitHub Trigger').first().json.issue;\nconst text = ((t.title || '') + ' ' + (t.body || '')).toLowerCase();\nlet kind = 'question';\nif (/\\b(bug|error|crash|broken|fail|exception|doesn't work|doesnt work)\\b/.test(text)) kind = 'bug';\nelse if (/\\b(doc|documentation|readme|typo|spelling)\\b/.test(text)) kind = 'documentation';\nelse if (/\\b(feature|enhancement|request|improve|add support)\\b/.test(text)) kind = 'enhancement';\nconst trig = $('GitHub Trigger').first().json;\nreturn [{ json: { kind, labels: [kind], issueNumber: trig.issue.number, owner: trig.repository.owner.login, repo: trig.repository.name } }];"
+   },
+   "name": "Classify",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    48,
+    112
+   ],
+   "id": "22220001-0000-4000-8000-000000000003"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "=https://api.github.com/repos/{{$json.owner}}/{{$json.repo}}/issues/{{$json.issueNumber}}/labels",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "githubApi",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ labels: $json.labels }) }}",
+    "options": {}
+   },
+   "name": "Add Labels",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4,
+   "position": [
+    288,
+    112
+   ],
+   "id": "22220001-0000-4000-8000-000000000004",
+   "onError": "continueRegularOutput",
+   "credentials": {
+    "githubApi": {
+     "id": "dAjZFYhSr9DSzzjO",
+     "name": "GitHub account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "=https://api.github.com/repos/{{$('Classify').item.json.owner}}/{{$('Classify').item.json.repo}}/issues/{{$('Classify').item.json.issueNumber}}/comments",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "githubApi",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ body: 'Thanks for opening this issue! Initial triage: **' + $('Classify').item.json.kind + '**. ' + ($('Classify').item.json.kind === 'bug' ? 'The auto-fix agent will investigate and open a fix PR shortly.' : 'A maintainer will take a look soon.') }) }}",
+    "options": {}
+   },
+   "name": "Triage Comment",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4,
+   "position": [
+    528,
+    112
+   ],
+   "id": "22220001-0000-4000-8000-000000000005",
+   "credentials": {
+    "githubApi": {
+     "id": "dAjZFYhSr9DSzzjO",
+     "name": "GitHub account"
+    }
+   }
+  }
+ ],
+ "pinData": {},
+ "connections": {
+  "GitHub Trigger": {
+   "main": [
+    [
+     {
+      "node": "IF Opened",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "IF Opened": {
+   "main": [
+    [
+     {
+      "node": "Classify",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Classify": {
+   "main": [
+    [
+     {
+      "node": "Add Labels",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Add Labels": {
+   "main": [
+    [
+     {
+      "node": "Triage Comment",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}
