@@ -1,0 +1,428 @@
+{
+ "name": "Agent Squad Orchestrator",
+ "nodes": [
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "orchestrate",
+    "responseMode": "responseNode",
+    "options": {}
+   },
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    -624,
+    -176
+   ],
+   "id": "a0000001-0000-4000-8000-000000000001",
+   "webhookId": "a0000001-0000-4000-8000-00000000f01",
+   "name": "Orchestrate Webhook"
+  },
+  {
+   "parameters": {
+    "owner": {
+     "__rl": true,
+     "value": "=Rintu-chowdory",
+     "mode": "name"
+    },
+    "repository": {
+     "__rl": true,
+     "mode": "name",
+     "value": "=agentic-build-orchestrate-a"
+    },
+    "events": [
+     "issues"
+    ],
+    "options": {}
+   },
+   "type": "n8n-nodes-base.githubTrigger",
+   "typeVersion": 1,
+   "position": [
+    -624,
+    128
+   ],
+   "id": "a0000001-0000-4000-8000-000000000002",
+   "webhookId": "a0000001-0000-4000-8000-00000000f02",
+   "credentials": {
+    "githubApi": {
+     "id": "dAjZFYhSr9DSzzjO",
+     "name": "GitHub account"
+    }
+   },
+   "name": "GitHub Trigger"
+  },
+  {
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  if (j.body && j.body.task !== undefined) {\n    out.push({ json: { task: String(j.body.task), source: 'webhook', issue_number: null } });\n  } else if (j.issue) {\n    const labels = (j.issue.labels || []).map(l => l && l.name ? l.name : l);\n    const isSquad = (j.action === 'labeled' && j.label && j.label.name === 'squad')\n      || (j.action === 'opened' && labels.includes('squad'));\n    if (!isSquad) continue;\n    out.push({ json: { task: j.issue.title + '\\n\\n' + (j.issue.body || ''), source: 'github', issue_number: j.issue.number } });\n  }\n}\nreturn out;"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -384,
+    -24
+   ],
+   "id": "a0000001-0000-4000-8000-000000000003",
+   "name": "Normalize Input"
+  },
+  {
+   "parameters": {
+    "promptType": "define",
+    "text": "=Task:\n{{ $json.task }}",
+    "messages": {
+     "values": [
+      {
+       "role": "system",
+       "content": "You are a task router for an agent team. Given a task, decide which specialist agents handle it and what each should do.\nAvailable agents:\n- rintu/dev_ops_agent - CI/CD, Docker, pipelines, infrastructure, DevOps\n- rintu/security_audit_agent - security review, vulnerabilities, threat analysis\n- rintu/saas_idea_agent - product/SaaS ideas, market analysis\n- rintu/base44_builder_agent - building apps on Base44, web app planning\nRules: pick 1-3 agents most relevant to the task; if none clearly fits, use rintu/dev_ops_agent. Write each agent's subtask as a complete, self-contained instruction in English.\nRespond ONLY with compact JSON, no markdown fences:\n{\"agents\":[{\"id\":\"rintu/dev_ops_agent\",\"task\":\"<specific instruction>\"}]}"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "type": "@n8n/n8n-nodes-langchain.chainLlm",
+   "typeVersion": 1.5,
+   "position": [
+    -144,
+    -24
+   ],
+   "id": "a0000001-0000-4000-8000-000000000004",
+   "name": "Route Task",
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 30000
+  },
+  {
+   "parameters": {
+    "model": "llama-3.1-8b-instant",
+    "options": {
+     "temperature": 0.1
+    }
+   },
+   "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+   "typeVersion": 1,
+   "position": [
+    -144,
+    -200
+   ],
+   "id": "a0000001-0000-4000-8000-000000000005",
+   "name": "Groq Router Model",
+   "credentials": {
+    "groqApi": {
+     "id": "REPLACE_AFTER_IMPORT",
+     "name": "Groq account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "const base = $('Normalize Input').first().json;\nlet plan;\ntry {\n  let raw = ($json.text || '').replace(/```(json)?/g, '').trim();\n  const m = raw.match(/\\{[\\s\\S]*\\}/);\n  plan = JSON.parse(m ? m[0] : raw);\n} catch (e) {\n  plan = null;\n}\nlet agents = plan && Array.isArray(plan.agents) ? plan.agents : [];\nagents = agents.filter(a => a && a.id && String(a.id).startsWith('rintu/')).slice(0, 3);\nif (!agents.length) agents = [{ id: 'rintu/dev_ops_agent', task: base.task }];\nreturn agents.map(a => ({ json: {\n  agent: a.id,\n  subtask: a.task || base.task,\n  task: base.task,\n  source: base.source,\n  issue_number: base.issue_number,\n} }));"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    80,
+    -24
+   ],
+   "id": "a0000001-0000-4000-8000-000000000006",
+   "name": "Parse Routing"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://openagi-agent-api.onrender.com/run",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-API-Key",
+       "value": "REPLACE_AGENT_API_KEY"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ agent: $json.agent, task: $json.subtask }) }}",
+    "options": {
+     "timeout": 300000
+    }
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    304,
+    -24
+   ],
+   "id": "a0000001-0000-4000-8000-000000000007",
+   "name": "Run Agent",
+   "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "mode": "runOnceForAllItems",
+    "jsCode": "const base = $('Normalize Input').first().json;\nconst results = $input.all().map(i => {\n  const j = i.json || {};\n  let r;\n  if (j.result !== undefined) r = typeof j.result === 'string' ? j.result : JSON.stringify(j.result);\n  else r = j.error ? ('Agent failed: ' + JSON.stringify(j.error)) : 'Agent returned no result';\n  return { agent: j.agent || 'unknown', result: r };\n});\nreturn [{ json: { task: base.task, source: base.source, issue_number: base.issue_number, results } }];"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    528,
+    -24
+   ],
+   "id": "a0000001-0000-4000-8000-000000000008",
+   "name": "Collect Results"
+  },
+  {
+   "parameters": {
+    "promptType": "define",
+    "text": "=Original task:\n{{ $json.task }}\n\nAgent results:\n{{ $json.results.map(r => '## ' + r.agent + '\\n' + r.result).join('\\n\\n---\\n\\n') }}",
+    "messages": {
+     "values": [
+      {
+       "role": "system",
+       "content": "You combine results from multiple specialist agents into one clear, well-structured Markdown answer. Stay faithful to the original task. Do not invent facts. Keep each agent's contribution attributed with a short heading."
+      }
+     ]
+    },
+    "options": {}
+   },
+   "type": "@n8n/n8n-nodes-langchain.chainLlm",
+   "typeVersion": 1.5,
+   "position": [
+    752,
+    -24
+   ],
+   "id": "a0000001-0000-4000-8000-000000000009",
+   "name": "Synthesize",
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 30000
+  },
+  {
+   "parameters": {
+    "model": "llama-3.1-8b-instant",
+    "options": {
+     "temperature": 0.4
+    }
+   },
+   "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+   "typeVersion": 1,
+   "position": [
+    752,
+    -200
+   ],
+   "id": "a0000001-0000-4000-8000-00000000000a",
+   "name": "Groq Synth Model",
+   "credentials": {
+    "groqApi": {
+     "id": "REPLACE_AFTER_IMPORT",
+     "name": "Groq account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict"
+     },
+     "conditions": [
+      {
+       "id": "cond-1",
+       "leftValue": "={{ $('Collect Results').first().json.source }}",
+       "rightValue": "webhook",
+       "operator": {
+        "type": "string",
+        "operation": "equals"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 1,
+   "position": [
+    976,
+    -24
+   ],
+   "id": "a0000001-0000-4000-8000-00000000000b",
+   "name": "Webhook or Issue?"
+  },
+  {
+   "parameters": {
+    "respondWith": "json",
+    "responseBody": "={{ JSON.stringify({ result: $json.text, agents: $('Collect Results').first().json.results.map(r => r.agent) }) }}"
+   },
+   "type": "n8n-nodes-base.respondToWebhook",
+   "typeVersion": 1.1,
+   "position": [
+    1200,
+    -128
+   ],
+   "id": "a0000001-0000-4000-8000-00000000000c",
+   "name": "Respond"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "=https://api.github.com/repos/Rintu-chowdory/agentic-build-orchestrate-a/issues/{{ $('Collect Results').first().json.issue_number }}/comments",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "githubApi",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ body: '\\u{1F916} **Agent squad report**\\n\\n' + $json.text }) }}",
+    "options": {}
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1200,
+    80
+   ],
+   "id": "a0000001-0000-4000-8000-00000000000d",
+   "name": "Comment on Issue",
+   "credentials": {
+    "githubApi": {
+     "id": "dAjZFYhSr9DSzzjO",
+     "name": "GitHub account"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Orchestrate Webhook": {
+   "main": [
+    [
+     {
+      "node": "Normalize Input",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "GitHub Trigger": {
+   "main": [
+    [
+     {
+      "node": "Normalize Input",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Normalize Input": {
+   "main": [
+    [
+     {
+      "node": "Route Task",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Groq Router Model": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "Route Task",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Route Task": {
+   "main": [
+    [
+     {
+      "node": "Parse Routing",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Parse Routing": {
+   "main": [
+    [
+     {
+      "node": "Run Agent",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Run Agent": {
+   "main": [
+    [
+     {
+      "node": "Collect Results",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Collect Results": {
+   "main": [
+    [
+     {
+      "node": "Synthesize",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Groq Synth Model": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "Synthesize",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Synthesize": {
+   "main": [
+    [
+     {
+      "node": "Webhook or Issue?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Webhook or Issue?": {
+   "main": [
+    [
+     {
+      "node": "Respond",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Comment on Issue",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ }
+}
