@@ -67,20 +67,26 @@
   },
   {
    "parameters": {
-    "promptType": "define",
-    "text": "=Task:\n{{ $json.task }}",
-    "messages": {
-     "values": [
+    "method": "POST",
+    "url": "https://openrouter.ai/api/v1/chat/completions",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
       {
-       "role": "system",
-       "content": "You are a task router for an agent team. Given a task, decide which specialist agents handle it and what each should do.\nAvailable agents:\n- rintu/dev_ops_agent - CI/CD, Docker, pipelines, infrastructure, DevOps\n- rintu/security_audit_agent - security review, vulnerabilities, threat analysis\n- rintu/saas_idea_agent - product/SaaS ideas, market analysis\n- rintu/base44_builder_agent - building apps on Base44, web app planning\nRules: pick 1-3 agents most relevant to the task; if none clearly fits, use rintu/dev_ops_agent. Write each agent's subtask as a complete, self-contained instruction in English.\nRespond ONLY with compact JSON, no markdown fences:\n{\"agents\":[{\"id\":\"rintu/dev_ops_agent\",\"task\":\"<specific instruction>\"}]}"
+       "name": "Authorization",
+       "value": "Bearer REPLACE_OPENROUTER_KEY"
       }
      ]
     },
-    "options": {}
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ model: \"deepseek/deepseek-v4-flash-0731:free\", temperature: 0.1, max_tokens: 600, messages: [ { role: \"system\", content: \"You are a task router for an agent team. Given a task, decide which specialist agents handle it and what each should do.\\nAvailable agents:\\n- rintu/dev_ops_agent - CI/CD, Docker, pipelines, infrastructure, DevOps\\n- rintu/security_audit_agent - security review, vulnerabilities, threat analysis\\n- rintu/saas_idea_agent - product/SaaS ideas, market analysis\\n- rintu/base44_builder_agent - building apps on Base44, web app planning\\nRules: pick 1-3 agents most relevant to the task; if none clearly fits, use rintu/dev_ops_agent. Write each agent subtask as a complete, self-contained instruction.\\nRespond ONLY with compact JSON, no markdown fences: {\\\"agents\\\":[{\\\"id\\\":\\\"rintu/dev_ops_agent\\\",\\\"task\\\":\\\"<instruction>\\\"}]}\" }, { role: \"user\", content: \"Task:\\n\" + $json.task } ] }) }}",
+    "options": {
+     "timeout": 120000
+    }
    },
-   "type": "@n8n/n8n-nodes-langchain.chainLlm",
-   "typeVersion": 1.5,
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
    "position": [
     -144,
     -24
@@ -93,34 +99,8 @@
   },
   {
    "parameters": {
-    "model": {
-     "__rl": true,
-     "value": "deepseek/deepseek-v4-flash-0731:free",
-     "mode": "list"
-    },
-    "options": {
-     "temperature": 0.1
-    }
-   },
-   "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-   "typeVersion": 1,
-   "position": [
-    -144,
-    -200
-   ],
-   "id": "a0000001-0000-4000-8000-000000000005",
-   "name": "Router Model (OpenRouter)",
-   "credentials": {
-    "openAiApi": {
-     "id": "REPLACE_AFTER_IMPORT",
-     "name": "OpenRouter"
-    }
-   }
-  },
-  {
-   "parameters": {
     "mode": "runOnceForAllItems",
-    "jsCode": "const base = $('Normalize Input').first().json;\nlet plan;\ntry {\n  let raw = ($json.text || '').replace(/```(json)?/g, '').trim();\n  const m = raw.match(/\\{[\\s\\S]*\\}/);\n  plan = JSON.parse(m ? m[0] : raw);\n} catch (e) {\n  plan = null;\n}\nlet agents = plan && Array.isArray(plan.agents) ? plan.agents : [];\nagents = agents.filter(a => a && a.id && String(a.id).startsWith('rintu/')).slice(0, 3);\nif (!agents.length) agents = [{ id: 'rintu/dev_ops_agent', task: base.task }];\nreturn agents.map(a => ({ json: {\n  agent: a.id,\n  subtask: a.task || base.task,\n  task: base.task,\n  source: base.source,\n  issue_number: base.issue_number,\n} }));"
+    "jsCode": "const base = $('Normalize Input').first().json;\nconst msg = $json.choices && $json.choices[0] ? $json.choices[0].message.content : ($json.text || '');\nlet plan;\ntry {\n  let raw = msg.replace(/```(json)?/g, '').trim();\n  const m = raw.match(/\\{[\\s\\S]*\\}/);\n  plan = JSON.parse(m ? m[0] : raw);\n} catch (e) { plan = null; }\nlet agents = plan && Array.isArray(plan.agents) ? plan.agents : [];\nagents = agents.filter(a => a && a.id && String(a.id).startsWith('rintu/')).slice(0, 3);\nif (!agents.length) agents = [{ id: 'rintu/dev_ops_agent', task: base.task }];\nreturn agents.map(a => ({ json: {\n  agent: a.id, subtask: a.task || base.task, task: base.task,\n  source: base.source, issue_number: base.issue_number,\n} }));"
    },
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -177,20 +157,26 @@
   },
   {
    "parameters": {
-    "promptType": "define",
-    "text": "=Original task:\n{{ $json.task }}\n\nAgent results:\n{{ $json.results.map(r => '## ' + r.agent + '\\n' + r.result).join('\\n\\n---\\n\\n') }}",
-    "messages": {
-     "values": [
+    "method": "POST",
+    "url": "https://openrouter.ai/api/v1/chat/completions",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
       {
-       "role": "system",
-       "content": "You combine results from multiple specialist agents into one clear, well-structured Markdown answer. Stay faithful to the original task. Do not invent facts. Keep each agent's contribution attributed with a short heading."
+       "name": "Authorization",
+       "value": "Bearer REPLACE_OPENROUTER_KEY"
       }
      ]
     },
-    "options": {}
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ model: \"nvidia/nemotron-3-super-120b-a12b:free\", temperature: 0.4, max_tokens: 3000, messages: [ { role: \"system\", content: \"You combine results from multiple specialist agents into one clear, well-structured Markdown answer. Stay faithful to the original task. Do not invent facts. Attribute each agent contribution with a short heading.\" }, { role: \"user\", content: \"Original task:\\n\" + $json.task + \"\\n\\nAgent results:\\n\" + $json.results.map(r => \"## \" + r.agent + \"\\n\" + r.result).join(\"\\n\\n---\\n\\n\") } ] }) }}",
+    "options": {
+     "timeout": 180000
+    }
    },
-   "type": "@n8n/n8n-nodes-langchain.chainLlm",
-   "typeVersion": 1.5,
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
    "position": [
     752,
     -24
@@ -200,32 +186,6 @@
    "retryOnFail": true,
    "maxTries": 3,
    "waitBetweenTries": 30000
-  },
-  {
-   "parameters": {
-    "model": {
-     "__rl": true,
-     "value": "nvidia/nemotron-3-super-120b-a12b:free",
-     "mode": "list"
-    },
-    "options": {
-     "temperature": 0.4
-    }
-   },
-   "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-   "typeVersion": 1,
-   "position": [
-    752,
-    -200
-   ],
-   "id": "a0000001-0000-4000-8000-00000000000a",
-   "name": "Synth Model (OpenRouter)",
-   "credentials": {
-    "openAiApi": {
-     "id": "REPLACE_AFTER_IMPORT",
-     "name": "OpenRouter"
-    }
-   }
   },
   {
    "parameters": {
@@ -262,7 +222,7 @@
   {
    "parameters": {
     "respondWith": "json",
-    "responseBody": "={{ JSON.stringify({ result: $json.text, agents: $('Collect Results').first().json.results.map(r => r.agent) }) }}"
+    "responseBody": "={{ JSON.stringify({ result: $json.choices[0].message.content, agents: $('Collect Results').first().json.results.map(r => r.agent) }) }}"
    },
    "type": "n8n-nodes-base.respondToWebhook",
    "typeVersion": 1.1,
@@ -281,7 +241,7 @@
     "nodeCredentialType": "githubApi",
     "sendBody": true,
     "specifyBody": "json",
-    "jsonBody": "={{ JSON.stringify({ body: '\\u{1F916} **Agent squad report**\\n\\n' + $json.text }) }}",
+    "jsonBody": "={{ JSON.stringify({ body: '\\u{1F916} **Agent squad report**\\n\\n' + $json.choices[0].message.content }) }}",
     "options": {}
    },
    "type": "n8n-nodes-base.httpRequest",
@@ -402,28 +362,6 @@
      {
       "node": "Comment on Issue",
       "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Router Model (OpenRouter)": {
-   "ai_languageModel": [
-    [
-     {
-      "node": "Route Task",
-      "type": "ai_languageModel",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Synth Model (OpenRouter)": {
-   "ai_languageModel": [
-    [
-     {
-      "node": "Synthesize",
-      "type": "ai_languageModel",
       "index": 0
      }
     ]
