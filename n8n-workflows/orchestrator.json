@@ -93,23 +93,27 @@
   },
   {
    "parameters": {
-    "model": "openai/gpt-oss-20b",
+    "model": {
+     "__rl": true,
+     "value": "deepseek/deepseek-v4-flash-0731:free",
+     "mode": "list"
+    },
     "options": {
      "temperature": 0.1
     }
    },
-   "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+   "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
    "typeVersion": 1,
    "position": [
     -144,
     -200
    ],
    "id": "a0000001-0000-4000-8000-000000000005",
-   "name": "Groq Router Model",
+   "name": "Router Model (OpenRouter)",
    "credentials": {
-    "groqApi": {
+    "openAiApi": {
      "id": "REPLACE_AFTER_IMPORT",
-     "name": "Groq account"
+     "name": "OpenRouter"
     }
    }
   },
@@ -199,23 +203,27 @@
   },
   {
    "parameters": {
-    "model": "openai/gpt-oss-20b",
+    "model": {
+     "__rl": true,
+     "value": "nvidia/nemotron-3-super-120b-a12b:free",
+     "mode": "list"
+    },
     "options": {
      "temperature": 0.4
     }
    },
-   "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+   "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
    "typeVersion": 1,
    "position": [
     752,
     -200
    ],
    "id": "a0000001-0000-4000-8000-00000000000a",
-   "name": "Groq Synth Model",
+   "name": "Synth Model (OpenRouter)",
    "credentials": {
-    "groqApi": {
+    "openAiApi": {
      "id": "REPLACE_AFTER_IMPORT",
-     "name": "Groq account"
+     "name": "OpenRouter"
     }
    }
   },
@@ -326,17 +334,6 @@
     ]
    ]
   },
-  "Groq Router Model": {
-   "ai_languageModel": [
-    [
-     {
-      "node": "Route Task",
-      "type": "ai_languageModel",
-      "index": 0
-     }
-    ]
-   ]
-  },
   "Route Task": {
    "main": [
     [
@@ -381,17 +378,6 @@
     ]
    ]
   },
-  "Groq Synth Model": {
-   "ai_languageModel": [
-    [
-     {
-      "node": "Synthesize",
-      "type": "ai_languageModel",
-      "index": 0
-     }
-    ]
-   ]
-  },
   "Synthesize": {
    "main": [
     [
@@ -416,6 +402,28 @@
      {
       "node": "Comment on Issue",
       "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Router Model (OpenRouter)": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "Route Task",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Synth Model (OpenRouter)": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "Synthesize",
+      "type": "ai_languageModel",
       "index": 0
      }
     ]
