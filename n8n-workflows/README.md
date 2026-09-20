@@ -1,6 +1,6 @@
 # n8n Agentic Workflow Stack
 
-Four n8n workflows that give this repository an autonomous agent layer.
+Five n8n workflows that give this repository an autonomous agent layer.
 All workflows run on a self-hosted n8n instance and watch this repo
 (`Rintu-chowdory/agentic-build-orchestrate-a`).
 
@@ -11,6 +11,7 @@ All workflows run on a self-hosted n8n instance and watch this repo
 | `chat-agent-github-tools.json` | My workflow (rebuilt) | `zO1DqIcTEVzfkuY5` | Chat agent (Groq `openai/gpt-oss-120b`) with Calculator, SerpApi web search, and GitHub tools: list issues, create issues, comment, list PRs |
 | `auto-fix-v2.json` | GitHub Auto-Fix Agent | `Nh0HnaOIn0N9VvgG` | Issue opened → Claude returns `{filePath, fileContent}` → creates `fix/auto-N` branch → commits the fix → opens a PR |
 | `issue-triage.json` | Issue Triage | `RAwPhBQwTyI05XVl` | New issue → keyword classification (bug / documentation / enhancement / question) → adds label + triage comment |
+| `pr-review-agent.json` | PR Review Agent | *(new)* | PR opened → fetches the diff → `security_audit_agent` reviews it → posts a structured review comment (verdict + tagged findings) on the PR |
 | `ci-watchdog.json` | CI Watchdog | `8fe66SVI9fpH8end` | GitHub Actions run fails → comments on the PR if one exists, otherwise opens an issue with the failing run link |
 
 ## Flow
@@ -27,6 +28,11 @@ All workflows run on a self-hosted n8n instance and watch this repo
                        (Actions run on the PR)
                                      │
                               failure? ──► CI Watchdog ──► PR comment / issue
+
+        PR opened
+              │
+              ▼
+     └── PR Review Agent ──► diff ──► security_audit_agent ──► review comment
 ```
 
 ## Restore / redeploy

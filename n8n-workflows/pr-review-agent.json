@@ -1,0 +1,228 @@
+{
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "name": "PR Review Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "owner": {
+          "__rl": true,
+          "value": "=Rintu-chowdory",
+          "mode": "name"
+        },
+        "repository": {
+          "__rl": true,
+          "mode": "name",
+          "value": "=agentic-build-orchestrate-a"
+        },
+        "events": [
+          "pullRequest"
+        ],
+        "options": {}
+      },
+      "name": "GitHub Trigger",
+      "type": "n8n-nodes-base.githubTrigger",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        0
+      ],
+      "id": "217de479-f602-4fe2-ad2e-9f6e30ab08b7",
+      "credentials": {
+        "githubApi": {
+          "id": "dAjZFYhSr9DSzzjO",
+          "name": "GitHub account"
+        }
+      },
+      "webhookId": "41bed851-2090-4f8f-bb38-0a57a6775a4a"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.action}}",
+              "value2": "opened"
+            }
+          ]
+        }
+      },
+      "name": "IF PR Opened",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -192,
+        0
+      ],
+      "id": "13345126-7ea4-41d9-b3ba-51575a4ace6b"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.github.com/repos/{{$('GitHub Trigger').first().json.repository.owner.login}}/{{$('GitHub Trigger').first().json.repository.name}}/pulls/{{$('GitHub Trigger').first().json.pull_request.number}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.diff"
+            }
+          ]
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "name": "Get PR Diff",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        32,
+        0
+      ],
+      "id": "5e71eb8f-feb9-4794-a5e5-81c4f0c048fe",
+      "credentials": {
+        "githubApi": {
+          "id": "dAjZFYhSr9DSzzjO",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build the review task from the PR diff (truncate to respect LLM token caps)\nconst trig = $('GitHub Trigger').first().json;\nconst resp = $input.first().json;\nlet diff = typeof resp === 'string' ? resp : (resp.data || JSON.stringify(resp));\nconst pr = trig.pull_request || {};\nconst title = (pr.title || 'Untitled PR').replace(/[`<>]/g, '');\nconst desc = (pr.body || 'No description provided.').slice(0, 800);\nconst MAX_DIFF = 6000;\nconst diffTrunc = diff.length > MAX_DIFF ? diff.slice(0, MAX_DIFF) + '\\n... (diff truncated)' : diff;\nconst task = [\n  'Review this pull request as a senior code reviewer.',\n  'PR title: ' + title,\n  'PR description: ' + desc,\n  '',\n  'Diff:',\n  diffTrunc,\n  '',\n  \"Write the review in Markdown with exactly three sections:\",\n  \"'## Verdict' — start with LGTM, NEEDS CHANGES or BLOCKER plus one sentence why.\",\n  \"'## Findings' — numbered, each tagged [HIGH]/[MED]/[LOW], cite file and context from the diff. Only real issues; no invented line numbers.\",\n  \"'## Quick suggestions' — short bullet points.\",\n  'Keep the whole review under 400 words.'\n].join('\\n');\nreturn [{ json: { pr_number: pr.number, pr_title: title, task: task, diff_chars: diff.length } }];"
+      },
+      "name": "Build Review Task",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        0
+      ],
+      "id": "4b6dd12d-a848-439c-9cdf-968d32adc5ad"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openagi-agent-api.onrender.com/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "REPLACE_AGENT_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ agent: 'rintu/security_audit_agent', task: $json.task }) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "name": "Run Review Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "id": "99d9fc4b-e625-462b-933e-8f80fcfbf021",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{$('GitHub Trigger').first().json.repository.owner.login}}/{{$('GitHub Trigger').first().json.repository.name}}/issues/{{$('GitHub Trigger').first().json.pull_request.number}}/comments",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ body: '## 🤖 Automated PR Review\\n\\n' + ($json.result || $json.detail || 'The review agent returned no output.') + '\\n\\n---\\n*Posted by PR Review Agent · rintu/security_audit_agent · triggered on PR opened*' }) }}",
+        "options": {}
+      },
+      "name": "Comment on PR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        704,
+        0
+      ],
+      "id": "086791b9-d542-44a3-a1e5-9eba7f2b6196",
+      "credentials": {
+        "githubApi": {
+          "id": "dAjZFYhSr9DSzzjO",
+          "name": "GitHub account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "GitHub Trigger": {
+      "main": [
+        [
+          {
+            "node": "IF PR Opened",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF PR Opened": {
+      "main": [
+        [
+          {
+            "node": "Get PR Diff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get PR Diff": {
+      "main": [
+        [
+          {
+            "node": "Build Review Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Review Task": {
+      "main": [
+        [
+          {
+            "node": "Run Review Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Review Agent": {
+      "main": [
+        [
+          {
+            "node": "Comment on PR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "pinData": {}
+}
